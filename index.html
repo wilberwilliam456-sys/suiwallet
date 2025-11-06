@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sui Wallet</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <style>
+    .hidden { display: none; }
+  </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen flex flex-col items-center justify-center">
+
+  <!-- AUTH SECTION -->
+  <div id="auth-section" class="text-center bg-gray-800 p-8 rounded-lg shadow-xl w-96">
+    <h1 class="text-3xl font-bold mb-4">🔐 Sui Wallet Login</h1>
+    <input id="password" type="password" placeholder="Enter a strong password" 
+      class="p-2 rounded bg-gray-700 text-white w-full mb-3 focus:outline-none focus:ring-2 focus:ring-blue-400">
+    <button onclick="login()" 
+      class="bg-blue-500 hover:bg-blue-600 text-white px-4 py-2 rounded w-full font-semibold">Login / Signup</button>
+  </div>
+
+  <!-- WALLET SECTION -->
+  <div id="wallet-section" class="hidden w-full max-w-2xl mx-auto p-4">
+    <div class="flex justify-between items-center mb-6">
+      <select id="network" class="bg-gray-800 p-2 rounded text-white" onchange="switchNetwork()">
+        <option value="mainnet">🌐 Mainnet</option>
+        <option value="testnet" selected>🧪 Testnet</option>
+        <option value="devnet">⚙️ Devnet</option>
+      </select>
+      <button onclick="logout()" class="bg-red-500 hover:bg-red-600 px-3 py-1 rounded">Logout</button>
+    </div>
+
+    <!-- BALANCE & INFO -->
+    <div id="wallet-info" class="bg-gray-800 p-4 rounded-lg mb-4 text-center"></div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="flex justify-between mb-4">
+      <button onclick="createWallet()" class="bg-green-500 hover:bg-green-600 px-3 py-2 rounded w-1/2 mr-2 font-semibold">
+        ➕ Generate Wallet
+      </button>
+      <button onclick="showRecoverModal()" class="bg-yellow-500 hover:bg-yellow-600 px-3 py-2 rounded w-1/2 font-semibold">
+        🔁 Recover Wallet
+      </button>
+    </div>
+
+    <!-- SEND TRANSACTION -->
+    <div class="bg-gray-800 p-4 rounded-lg mb-4">
+      <h2 class="text-xl mb-2 font-semibold">💸 Send Transaction</h2>
+      <input id="recipient" placeholder="Recipient address" 
+        class="p-2 rounded bg-gray-700 text-white w-full mb-2">
+      <input id="amount" placeholder="Amount (SUI)" 
+        class="p-2 rounded bg-gray-700 text-white w-full mb-2">
+      <button onclick="sendTx()" class="bg-blue-500 hover:bg-blue-600 px-4 py-2 rounded w-full font-semibold">
+        Send
+      </button>
+    </div>
+
+    <!-- TRANSACTION HISTORY -->
+    <div class="bg-gray-800 p-4 rounded-lg">
+      <h2 class="text-xl font-semibold mb-3">📜 Transaction History</h2>
+      <div id="tx-history" class="text-sm text-gray-300 space-y-2 max-h-64 overflow-y-auto"></div>
+    </div>
+  </div>
+
+  <!-- SEED PHRASE MODAL -->
+  <div id="seed-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center">
+    <div class="bg-gray-900 border border-gray-700 p-6 rounded-lg shadow-xl text-center w-96">
+      <h2 class="text-2xl font-bold mb-3">🪶 Backup Your Seed Phrase</h2>
+      <p class="text-sm text-gray-400 mb-4">
+        This 12-word phrase can recover your wallet. Store it securely and never share it.
+      </p>
+      <div id="seed-words" class="bg-gray-800 p-3 rounded text-sm font-mono text-gray-100 mb-4"></div>
+      <button onclick="closeSeedModal()" class="bg-green-500 hover:bg-green-600 px-4 py-2 rounded font-semibold w-full">
+        I’ve Saved It
+      </button>
+    </div>
+  </div>
+
+  <!-- RECOVER MODAL -->
+  <div id="recover-modal" class="hidden fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center">
+    <div class="bg-gray-900 border border-gray-700 p-6 rounded-lg shadow-xl w-96 text-center">
+      <h2 class="text-2xl font-bold mb-3">🔁 Recover Wallet</h2>
+      <textarea id="recover-seed" rows="3" placeholder="Enter your 12-word seed phrase..." 
+        class="w-full p-2 rounded bg-gray-800 text-white mb-3"></textarea>
+      <button onclick="recoverWallet()" class="bg-yellow-500 hover:bg-yellow-600 px-4 py-2 rounded font-semibold w-full">
+        Recover
+      </button>
+      <button onclick="closeRecoverModal()" class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded w-full mt-2">
+        Cancel
+      </button>
+    </div>
+  </div>
+
+  <script>
+    let token = localStorage.getItem("jwt");
+    let network = localStorage.getItem("network") || "testnet";
+
+    if (token) showWallet();
+
+    async function login() {
+      const password = document.getElementById("password").value.trim();
+      if (password.length < 8) return alert("Password must be at least 8 characters!");
+      const res = await fetch("/api/auth/login", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password })
+      });
+      const data = await res.json();
+      if (data.token) {
+        localStorage.setItem("jwt", data.token);
+        showWallet();
+      } else alert(data.error);
+    }
+
+    function logout() {
+      localStorage.removeItem("jwt");
+      location.reload();
+    }
+
+    function showWallet() {
+      document.getElementById("auth-section").classList.add("hidden");
+      document.getElementById("wallet-section").classList.remove("hidden");
+      document.getElementById("network").value = network;
+      alert(`🌐 Connected to ${network}`);
+      loadWalletData();
+    }
+
+    async function switchNetwork() {
+      network = document.getElementById("network").value;
+      localStorage.setItem("network", network);
+      alert(`🔁 Switched to ${network}`);
+      loadWalletData();
+    }
+
+    async function loadWalletData() {
+      await loadBalance();
+      await loadTxHistory();
+    }
+
+    async function loadBalance() {
+      const res = await fetch(`/api/account/balance/${network}`, {
+        headers: { "Authorization": "Bearer " + localStorage.getItem("jwt") }
+      });
+      const data = await res.json();
+      const info = document.getElementById("wallet-info");
+      if (data.balance)
+        info.innerHTML = `
+          <p><b>Address:</b> ${data.address}</p>
+          <p><b>Balance:</b> ${data.balance.toFixed(4)} SUI</p>`;
+      else
+        info.innerHTML = `<p class="text-red-400">${data.error || "No wallet yet. Create one below."}</p>`;
+    }
+
+    async function loadTxHistory() {
+      const res = await fetch(`/api/account/history/${network}`, {
+        headers: { "Authorization": "Bearer " + localStorage.getItem("jwt") }
+      });
+      const data = await res.json();
+      const container = document.getElementById("tx-history");
+      container.innerHTML = "";
+      if (!data.transactions || data.transactions.length === 0) {
+        container.innerHTML = "<p class='text-gray-400'>No transactions yet.</p>";
+        return;
+      }
+      data.transactions.slice(0, 10).forEach(tx => {
+        const color = tx.status === "success" ? "text-green-400" : "text-red-400";
+        const link = `https://explorer.sui.io/txblock/${tx.digest}?network=${network}`;
+        container.innerHTML += `
+          <div class="border-b border-gray-700 pb-1">
+            <p><b>${tx.type}</b> ${tx.amount} SUI → <span class="text-blue-400">${tx.to.slice(0,10)}...</span></p>
+            <p class="text-xs ${color}">${tx.status} • <a href="${link}" target="_blank" class="underline">View</a></p>
+          </div>
+        `;
+      });
+    }
+
+    async function createWallet() {
+      const res = await fetch("/api/account/generate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + localStorage.getItem("jwt")
+        },
+        body: JSON.stringify({ network })
+      });
+      const data = await res.json();
+      if (data.success) {
+        document.getElementById("seed-words").innerText = data.mnemonic;
+        document.getElementById("seed-modal").classList.remove("hidden");
+        loadWalletData();
+      } else alert(data.error);
+    }
+
+    function closeSeedModal() {
+      document.getElementById("seed-modal").classList.add("hidden");
+    }
+
+    function showRecoverModal() {
+      document.getElementById("recover-modal").classList.remove("hidden");
+    }
+
+    function closeRecoverModal() {
+      document.getElementById("recover-modal").classList.add("hidden");
+    }
+
+    async function recoverWallet() {
+      const mnemonic = document.getElementById("recover-seed").value.trim();
+      const res = await fetch("/api/account/recover", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + localStorage.getItem("jwt")
+        },
+        body: JSON.stringify({ mnemonic, network })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert("✅ Wallet recovered successfully!");
+        closeRecoverModal();
+        loadWalletData();
+      } else alert(data.error);
+    }
+
+    async function sendTx() {
+      const recipient = document.getElementById("recipient").value.trim();
+      const amount = document.getElementById("amount").value.trim();
+      if (!recipient || !amount) return alert("Enter recipient and amount!");
+      const res = await fetch(`/api/transaction/send/${network}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + localStorage.getItem("jwt")
+        },
+        body: JSON.stringify({ recipient, amount })
+      });
+      const data = await res.json();
+      if (data.success) {
+        alert(`✅ Transaction sent!\nDigest: ${data.digest}`);
+        loadWalletData();
+      } else alert(`❌ ${data.error}`);
+    }
+  </script>
+</body>
+</html>

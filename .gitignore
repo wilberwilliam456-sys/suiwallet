@@ -1,0 +1,56 @@
+# Python / Flask
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+instance/
+.env
+.env.*
+venv/
+env/
+.venv/
+.Python
+
+
+# Bytecode / Logs
+*.log
+*.pot
+*.pyc
+*.sqlite3
+*.db
+*.pid
+*.seed
+*.bak
+
+
+# IDE / OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+
+
+# Node / Front-end artifacts
+# (only if you ever add npm-based UI)
+node_modules/
+dist/
+build/
+
+
+# Docker / Deployment
+docker-compose.override.yml
+*.pid
+*.sock
+*.tar
+*.gz
+
+
+# Backups and credentials
+*.pem
+*.key
+*.crt
+wallet.db
+migrations/

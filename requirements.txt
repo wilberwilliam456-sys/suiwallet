@@ -1,0 +1,24 @@
+# Core web framework
+Flask==3.0.3
+Flask-Cors==4.0.1
+Flask-SQLAlchemy==3.1.1
+
+# Database driver (for SQLite / Postgres)
+SQLAlchemy==2.0.35
+psycopg2-binary==2.9.9
+
+# Security and encryption
+cryptography==43.0.1
+PyJWT==2.9.0
+
+# Blockchain integration (Sui)
+pysui==0.43.0
+
+# Utility libraries
+requests==2.32.3
+
+# Gunicorn (for production WSGI server)
+gunicorn==21.2.0
+
+# Optional: if you plan to use async/await with pysui or background tasks
+aiohttp==3.10.3

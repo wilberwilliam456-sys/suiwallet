@@ -1,0 +1,27 @@
+version: '3.9'
+
+services:
+  suiwallet:
+    build: .
+    container_name: suiwallet_app
+    restart: unless-stopped
+    env_file:
+      - .env
+    ports:
+      - "5000:5000"
+    volumes:
+      - .:/app
+    environment:
+      FLASK_ENV: ${FLASK_ENV:-production}
+      SECRET_KEY: ${SECRET_KEY}
+      JWT_SECRET: ${JWT_SECRET}
+      FERNET_KEY: ${FERNET_KEY}
+      DATABASE_URL: ${DATABASE_URL}
+      NETWORK: ${NETWORK:-testnet}
+      HOST: ${HOST:-0.0.0.0}
+      PORT: ${PORT:-5000}
+    command: >
+      sh -c "
+      echo '🚀 Starting Flask wallet on ${NETWORK}...';
+      gunicorn --bind 0.0.0.0:${PORT} app:app --workers 4 --timeout 120
+      "
